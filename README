@@ -1,0 +1,15 @@
+Software for inteligent image resizing. Algorithem tries to maintain important image regions within original aspect ratio while resizing.
+
+To compile:
+mkdir build
+cd build
+cmake ..
+make
+
+To use:
+resize input output desiredWidth desiredHeight <mask>
+
+imput - is input image path. Image has to be at least 10x10 pixels rgba
+mask - is optional
+output - is output image name
+desiredWidth and desiredHeight are integers higher then 10 deretmining output dimensions
