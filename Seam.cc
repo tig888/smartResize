@@ -8,7 +8,7 @@
 
 using namespace std;
 
-void saveToFile(const char* filename, std::vector<unsigned char>& image, unsigned width, unsigned height) {
+auto saveToFile(const char* filename, std::vector<unsigned char>& image, unsigned width, unsigned height) -> void{
 	//Encode the image
 	unsigned error = lodepng::encode(filename, image, width, height);
 
@@ -16,7 +16,7 @@ void saveToFile(const char* filename, std::vector<unsigned char>& image, unsigne
 	if(error) std::cout << "encoder error " << error << ": "<< lodepng_error_text(error) << std::endl;
 }
 
-void saveToFile(const char* filename, std::vector<double>& in, unsigned width, unsigned height) {
+auto saveToFile(const char* filename, std::vector<FP>& in, unsigned width, unsigned height) -> void{
 	vector<unsigned char> out;
 	out.reserve(in.size() * 4);
 	for(auto a : in){
@@ -40,7 +40,7 @@ originalMask(mask),
 workspace(image.getWidth(), image.getHeight())
 {
     auto it = workspace.begin();
-    Data2D<double> energy;
+    Data2D<FP> energy;
     if(mask.size() > 0 ){
         energy = originalImage.calculateEnergy(mask);
     }
@@ -57,7 +57,7 @@ workspace(image.getWidth(), image.getHeight())
         }
     }
 }
-inline void Seam::addPotentialNewPoint(int idx, double e, int parentIdx){
+inline void Seam::addPotentialNewPoint(int idx, FP e, int parentIdx){
     if(idx > workspace.size())
     {
         IdxD2<> O(workspace.getWidth(), workspace.getHeight());
@@ -70,10 +70,10 @@ inline void Seam::addPotentialNewPoint(int idx, double e, int parentIdx){
     }
 }
 
-void Seam::initializeRun(){
+auto Seam::initializeRun() -> void{
     costs.clear();
     for(int x = 0 ; x < workspace.getWidth(); x++){
-        double e = workspace[x].energy;
+        FP e = workspace[x].energy;
         costs.emplace(e, TraceLinkage{x, -1});
     }
     IdxD2<> dim(workspace.getWidth(), workspace.getHeight());
@@ -85,7 +85,7 @@ void Seam::initializeRun(){
     }
 }
 
-void Seam::checkSeam(set<int>& seam){
+auto Seam::checkSeam(set<int>& seam) -> void{
     IdxD2<> O(workspace.getWidth(), workspace.getHeight());
     if(seam.size() != workspace.getHeight())
     {
@@ -104,7 +104,7 @@ void Seam::checkSeam(set<int>& seam){
     }
 }
 
-void Seam::reduceWorkspace(set<int> seam){
+auto Seam::reduceWorkspace(set<int> seam) -> void{
     checkSeam(seam);
     Data2D<Node> newWorkspace(workspace.getWidth()-1, workspace.getHeight());
     auto ommit = seam.begin();
@@ -121,7 +121,7 @@ void Seam::reduceWorkspace(set<int> seam){
     workspace = move(newWorkspace);
 }
 
-void Seam::expandWorkspace(set<int>& seam, int N){
+auto Seam::expandWorkspace(set<int>& seam, int N) -> void{
     checkSeam(seam);
     Data2D<Node> newWorkspace(workspace.getWidth()+N, workspace.getHeight());
     auto copyInto = newWorkspace.begin();
@@ -143,8 +143,8 @@ void Seam::expandWorkspace(set<int>& seam, int N){
     workspace = move(newWorkspace);
 }
 
-set<int> Seam::findSeam(){
-    pair<double,TraceLinkage> node;
+auto Seam::findSeam() -> set<int>{
+    pair<FP,TraceLinkage> node;
     IdxD2<> O(workspace.getWidth(), workspace.getHeight());
 
     node = *(costs.begin());
@@ -183,13 +183,13 @@ set<int> Seam::findSeam(){
     return path;
 }
 
-set<int> Seam::findOneSeam(){
+auto Seam::findOneSeam() -> set<int>{
     initializeRun();
     return findSeam();
 }
 
 
-void Seam::redistributeEnergy(const set<int>&  path){
+auto Seam::redistributeEnergy(const set<int>&  path) -> void{
     IdxD2<> O(workspace.getWidth(), workspace.getHeight());
     for(auto idx : path){
         if(!O.leftEdge(idx)){
@@ -201,7 +201,7 @@ void Seam::redistributeEnergy(const set<int>&  path){
     }
 }
 
-void Seam::adjustEnergy(const set<int>&  path){
+auto Seam::adjustEnergy(const set<int>&  path) -> void{
     IdxD2<> O(workspace.getWidth(), workspace.getHeight());
     for(auto idx : path){
         workspace[idx].energy += 0.1;
@@ -215,53 +215,7 @@ void Seam::adjustEnergy(const set<int>&  path){
     }
 }
 
-void Seam::fixEnergies(vector<Point> nodes){
-    IdxD2<> O(workspace.getWidth(), workspace.getHeight());
-    //cout << "Energy fixes &&&&&&&&&&&&&&&&" << endl;
-    for(auto n : nodes){
-        int x = n.x;
-        int y = n.y;
-        int origIdxMiddle = workspace[O.point2idx(x, y)].hashIdx;
-        int origIdxLeft 	= origIdxMiddle;
-        int origIdxRight 	= origIdxMiddle;
-        int origIdxTop 		= origIdxMiddle;
-        int origIdxBottom 	= origIdxMiddle;
-        if(!O.leftEdge(x, y)) 		origIdxLeft   = workspace[O.point2idx(x-1, y)].hashIdx;
-        if(!O.rightEdge(x, y)) 		origIdxRight  = workspace[O.point2idx(x+1, y)].hashIdx;
-        if(!O.topEdge(x, y)) 		origIdxTop    = workspace[O.point2idx(x, y-1)].hashIdx;
-        if(!O.bottomEdge(x, y)) 	origIdxBottom = workspace[O.point2idx(x, y+1)].hashIdx;
-        //cout << "     " << O.getX(origIdxLeft) << "  " << O.getX(origIdxMiddle) << "     ";
-        double dx = originalImage.pix_ABSdiff(originalImage.getPtr(origIdxLeft), originalImage.getPtr(origIdxRight));
-        double dy = originalImage.pix_ABSdiff(originalImage.getPtr(origIdxTop), originalImage.getPtr(origIdxBottom));
-        double newEnergy = (dx+dy)/2;
-        //cout << "Old: " << workspace[O.point2idx(x, y)].energy << "  New: " << newEnergy << endl;
-        workspace[O.point2idx(x, y)].energy = newEnergy;
-    }
-}
-
-vector<Point> Seam::getNodesThatNeedEnergyFix(const set<int>&  path){
-    IdxD2<> O(workspace.getWidth(), workspace.getHeight());
-    vector<Point> nodes;
-    int y = 0;
-    for(auto idx : path){
-        if(!O.leftEdge(idx)){
-            Point p;
-            p.x = O.getX(O.left(idx));
-            p.y = y;
-            nodes.push_back(p);
-        }
-        if(!O.rightEdge(idx)){
-            Point p;
-            p.x = O.getX(idx);
-            p.y = y;
-            nodes.push_back(p);
-        }
-        y++;
-    }
-    return nodes;
-}
-
-void Seam::debugSeam(set<int>& path){
+auto Seam::debugSeam(set<int>& path) -> void{
     vector<unsigned char> temp;
     int i = 0;
     for(auto w : workspace){
@@ -291,7 +245,7 @@ void Seam::debugSeam(set<int>& path){
     saveToFile("trace.png", temp, workspace.getWidth(), workspace.getHeight());
 }
 
-vector<int> Seam::removeNSeams(int N){
+auto Seam::removeNSeams(int N) -> vector<int>{
     set<int>  path;
     int initTime = 0, findTime = 0, adjustTime = 0, expandTime = 0;
     for(int i = 0 ; i < N ; i++)
@@ -316,23 +270,6 @@ vector<int> Seam::removeNSeams(int N){
     cout << "addNSeams finding took: " << findTime << " ms" << endl;
     cout << "addNSeams adjusting took: " << adjustTime << " ms" << endl;
     cout << "addNSeams reduce took: " << expandTime << " ms" << endl;
-    // for(int i = 0 ; i < N ; i++)
-    // {
-    //     initializeRun();
-    //     //costs.emplace(energy.getVal(450,0), TraceLinkage{450, -1});
-    //     path = findSeam();
-    // 	redistributeEnergy(path);
-    // 	auto needFix = getNodesThatNeedEnergyFix(path);
-    //     //cout << path.size() << endl;
-    //     reduceWorkspace(path);
-    // 	//fixEnergies(needFix);
-    // }
-    // Data2D<double> newEnergy(width, height);
-    // auto it = newEnergy.begin();
-    // for(auto w : workspace){
-    // 	*(it++) = w.energy;
-    // }
-    // encodeOneStep("afterEnergy.png", newEnergy, newEnergy.getWidth(), newEnergy.getHeight());
 
 
     vector<int> remainingPixels;
@@ -364,8 +301,7 @@ vector<int> Seam::removeNSeams(int N){
     return remainingPixels;
 }
 
-
-ImageRGBA<unsigned char> Seam::resultImage(){
+auto Seam::resultImage() -> ImageRGBA<unsigned char>{
     ImageRGBA<unsigned char> output(workspace.getWidth(), workspace.getHeight());
     auto ptrDest = output.accessPtr(0);
     for(auto n : workspace){
@@ -376,7 +312,8 @@ ImageRGBA<unsigned char> Seam::resultImage(){
     }
     return output;
 }
-ImageRGBA<unsigned char> Seam::resultMask(){
+
+auto Seam::resultMask() -> ImageRGBA<unsigned char>{
     ImageRGBA<unsigned char> output(workspace.getWidth(), workspace.getHeight());
     auto ptrDest = output.accessPtr(0);
     for(auto n : workspace){
@@ -387,7 +324,7 @@ ImageRGBA<unsigned char> Seam::resultMask(){
     }
     return output;
 }
-set<int> Seam::addNSeams(int N){
+auto Seam::addNSeams(int N) -> set<int> {
     set<int> path;
     int initTime = 0, findTime = 0, adjustTime = 0, expandTime = 0;
     for(int i = 0 ; i < N ; i++)

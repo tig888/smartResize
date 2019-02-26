@@ -66,8 +66,8 @@ auto SmartImageScale::scale(int desiredWidth, int desiredHeight) -> ImageRGBA<un
 	Timer t;
 	cout << "SIS SmartScaling image from " << origImage.getWidth() << 'x' << origImage.getHeight();
 	cout << " to " << desiredWidth << 'x' << desiredHeight << endl;
-	float originalAspectRatio = ((float)origImage.getWidth()) / origImage.getHeight();
-	float desiredAspectRatio = ((float)desiredWidth) / desiredHeight;
+	FP originalAspectRatio = ((FP)origImage.getWidth()) / origImage.getHeight();
+	FP desiredAspectRatio = ((FP)desiredWidth) / desiredHeight;
 	t.tick();
 	if(desiredWidth == origImage.getWidth() && desiredHeight == origImage.getHeight()){
 

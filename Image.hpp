@@ -8,6 +8,8 @@
 #include<cmath>
 #include<set>
 
+typedef float FP;
+
 
 template<typename T, int STEP = 1>
 class Data2D : public std::vector<T>{
@@ -94,9 +96,9 @@ class Data2D : public std::vector<T>{
         int w = getWidth();
         int h = getHeight();
         int a, b, c, d, x, y, index ;
-        float x_ratio = ((float)(w-1))/w2 ;
-        float y_ratio = ((float)(h-1))/h2 ;
-        float x_diff, y_diff, blue, red, green ;
+        FP x_ratio = ((FP)(w-1))/w2 ;
+        FP y_ratio = ((FP)(h-1))/h2 ;
+        FP x_diff, y_diff, blue, red, green ;
         int offset = 0 ;
         auto it = temp.begin();
         for (int i=0;i<h2;i++) {
@@ -136,14 +138,14 @@ class ImageRGBA : public Data2D<T, 4>{
     ImageRGBA& operator=( ImageRGBA&& other) = default;
     ImageRGBA(const ImageRGBA& other) = default;
 
-    inline double pix_ABSdiff(const T* positive, const T* negative) const {
-        double diff_red =   static_cast<double>( *(positive++) ) - *(negative++);
-        double diff_green = static_cast<double>( *(positive++) ) - *(negative++);
-        double diff_blue =  static_cast<double>( *(positive++) ) - *(negative++);
+    inline FP pix_ABSdiff(const T* positive, const T* negative) const {
+        FP diff_red =   static_cast<FP>( *(positive++) ) - *(negative++);
+        FP diff_green = static_cast<FP>( *(positive++) ) - *(negative++);
+        FP diff_blue =  static_cast<FP>( *(positive++) ) - *(negative++);
         return ( std::abs(diff_red) + std::abs(diff_green) + std::abs(diff_blue) )/(3*255);
     }
-    Data2D<double> calculate_dx() const {
-        Data2D<double> output(this->width, this->height);
+    Data2D<FP> calculate_dx() const {
+        Data2D<FP> output(this->width, this->height);
         auto it = output.begin();
         for(int y = 0 ; y < this->height; y++){
             //handle left edge
@@ -159,8 +161,8 @@ class ImageRGBA : public Data2D<T, 4>{
         }
         return output;
     }
-    Data2D<double> calculate_dy() const {
-        Data2D<double> output(this->width, this->height);
+    Data2D<FP> calculate_dy() const {
+        Data2D<FP> output(this->width, this->height);
         auto it = output.begin();
         //handle top edge
         for(int x = 0 ; x < this->width; x++){
@@ -184,22 +186,22 @@ class ImageRGBA : public Data2D<T, 4>{
         }
         return output;
     }
-    Data2D<double> calculateEnergy(const ImageRGBA<unsigned char>& mask) const {
+    Data2D<FP> calculateEnergy(const ImageRGBA<unsigned char>& mask) const {
         auto dx = calculate_dx();
         auto dy = calculate_dy();
-        Data2D<double> output(this->width, this->height);
+        Data2D<FP> output(this->width, this->height);
         for(int i = 0 ; i < dx.size() ; i++){
             auto ptr = mask.getPtr(i);
-            double lowEnergy = *(ptr++) / (double)255;
-            double highEnergy = *(ptr++) / (double)255;
+            FP lowEnergy = *(ptr++) / (FP)255;
+            FP highEnergy = *(ptr++) / (FP)255;
             output[i] = ((dx[i]*4 + dy[i]) / 5) + 5 + 5*(highEnergy-lowEnergy) ;
         }
         return output;
     }
-    Data2D<double> calculateEnergy() const {
+    Data2D<FP> calculateEnergy() const {
         auto dx = calculate_dx();
         auto dy = calculate_dy();
-        Data2D<double> output(this->width, this->height);
+        Data2D<FP> output(this->width, this->height);
         for(int i = 0 ; i < dx.size() ; i++){
             output[i] = ((dx[i]*4 + dy[i]) / 5) ;
         }
